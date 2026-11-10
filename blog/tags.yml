@@ -1,0 +1,10 @@
+announcement:
+  label: Announcement
+  permalink: /announcement
+  description: Official announcements, project updates, milestones, and important news about Z.
+
+zaban:
+  label: Zaban
+  permalink: /zaban
+  description: Grammar and Syntax related designs.
+

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 512 512"
+   role="img"
+   aria-labelledby="title desc"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="logo.svg"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="namedview4"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showguides="true"
+     inkscape:zoom="0.60449219"
+     inkscape:cx="148.8853"
+     inkscape:cy="344.91761"
+     inkscape:window-width="1406"
+     inkscape:window-height="848"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4">
+    <sodipodi:guide
+       position="400.0191,135.86945"
+       orientation="1,0"
+       id="guide4"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <title
+     id="title">Z Programming Language</title>
+  <desc
+     id="desc">A geometric Z monogram formed from bold angular strokes, with a small compiler-inspired node motif.</desc>
+  <rect
+     width="512"
+     height="512"
+     rx="72"
+     fill="#21262D"
+     id="rect1"
+     inkscape:label="Background" />
+  <!-- Angular Z mark -->
+  <path
+     d="M112 128H400L400 184L202 328H400V384H112V328L310 184H112Z"
+     fill="#E2FC5A"
+     id="path1"
+     inkscape:label="Z Typo" />
+  <!-- Terminal-like cutout -->
+  <path
+     d="m 160.32948,217.07562 36.17727,37.68152 -52.26138,38.04707"
+     fill="none"
+     stroke="#8f4def"
+     stroke-width="19"
+     stroke-linecap="square"
+     stroke-linejoin="miter"
+     id="path2"
+     sodipodi:nodetypes="ccc"
+     inkscape:label="Angle" />
+  <!-- Three compiler nodes -->
+  <g
+     fill="#8f4def"
+     id="g4"
+     transform="translate(11.579968,22.332795)"
+     inkscape:label="Branched">
+    <rect
+       x="345"
+       y="214"
+       width="18"
+       height="18"
+       rx="2"
+       id="rect2" />
+    <rect
+       x="371"
+       y="240"
+       width="18"
+       height="18"
+       rx="2"
+       id="rect3" />
+    <rect
+       x="345"
+       y="266"
+       width="18"
+       height="18"
+       rx="2"
+       id="rect4" />
+    <path
+       d="m 354,232 26,17 -26,17"
+       fill="none"
+       stroke="#8f4def"
+       stroke-width="7"
+       stroke-linecap="square"
+       stroke-linejoin="miter"
+       id="path4" />
+  </g>
+  <metadata
+     id="metadata4">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>Z Programming Language</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

@@ -29,9 +29,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-		  // TODO: change this to our own repo edit url.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+		  editUrl: 'https://github.com/zii-lang/design/edit/main/',
         },
         blog: {
           showReadingTime: true,
@@ -39,9 +37,7 @@ const config: Config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
-		  // TODO: change this to our own repo edit url.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+		  editUrl: 'https://github.com/zii-lang/design/edit/main/',
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
@@ -67,7 +63,7 @@ const config: Config = {
       items: [
         {
           type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
+          sidebarId: 'designSidebar',
           position: 'left',
           label: 'Documentations',
         },

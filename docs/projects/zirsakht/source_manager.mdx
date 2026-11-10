@@ -1,0 +1,464 @@
+---
+title: Source Manager Design
+---
+
+## Intentions
+
+The Source Manager is responsible for managing source files throughout the compilation process. It provides a unified interface for accessing source files while handling their **discovery**, **acquisition**, **identity**, **lifecycle**, **availability**, and **resource management**.
+
+Its primary goal is to abstract source access from the rest of the compiler, allowing other compiler components to work with source contents without being concerned with the underlying storage, access permissions, or resource management.
+
+The Source Manager is responsible for the following areas:
+
+- **Source Discovery and Resolution:** Locating and resolving source references requested during compilation, ensuring that source files can be identified and accessed through a consistent interface.
+
+- **Source Identity:** Maintaining a consistent identity for each source, allowing compiler components to refer to the same source throughout the compilation process.
+
+- **Source Acquisition and Loading:** Managing how and when source contents become available. This includes deciding whether sources should be loaded immediately or lazily, depending on their characteristics and the requirements of the compilation process.
+
+- **Resource Management:** Managing resources associated with source files, including memory consumption and file handles. Loading strategies should consider source size, system capabilities, and available resources. The Source Manager should also determine whether source resources need to remain available or can be released.
+
+- **Access Control:** Checking whether the required permissions are available before performing source-related operations, including reading and writing files.
+
+- **Source Lifecycle Management:** Managing the lifetime and availability of sources throughout compilation, ensuring that source contents remain accessible for as long as they are required.
+
+- **Source Metadata Management:** Maintaining and providing relevant information about sources, such as their paths, sizes, and other file attributes.
+
+- **Source Change Detection:** Identifying changes to source files after they have been acquired. The Source Manager should be able to determine whether previously acquired source contents are still valid or have become outdated. This responsibility is particularly relevant for long-running compiler processes, source invalidation, and future incremental compilation support.
+
+- **Source Invalidation:** Ensuring that sources identified as changed or outdated can be marked as invalid, preventing compiler components from unknowingly relying on stale source contents. Source invalidation should provide a foundation for future compilation dependency tracking and incremental recompilation.
+
+- **Source Abstraction:** Providing a consistent interface for different source origins, without restricting source acquisition to filesystem-based files. This allows sources to originate from different storage systems or external inputs.
+
+- **Source Error Handling:** Identifying and reporting source-related failures, including missing files, inaccessible sources, permission errors, and loading failures. These failures should be exposed in a structured manner so that other compiler components can handle or report them appropriately.
+
+## Responsibilities
+
+The Source Manager should provide a consistent way for compiler components to interact with source files without requiring them to handle source discovery, file access, or resource management independently.
+
+It should ensure that:
+
+- Sources can be located and identified consistently.
+- Source contents are accessible whenever required by the compilation process.
+- Unnecessary source loading and resource consumption are avoided.
+- Loading strategies account for source characteristics and system capabilities.
+- Source resources are retained for as long as they are needed.
+- File operations respect the available permissions.
+- Changes to acquired sources can be detected when required.
+- Outdated source contents can be identified and invalidated.
+- Relevant source metadata is available to compiler components.
+- Different source origins can be accessed through a unified abstraction.
+- Source-related failures are reported consistently and meaningfully.
+
+## Scope
+
+The Source Manager is concerned with source acquisition, access, identity, availability, lifecycle management, and source validity.
+
+It is not responsible for parsing, lexical analysis, semantic analysis, or other language-specific compilation tasks. Those responsibilities belong to their respective compiler components.
+
+Similarly, the Source Manager should not be responsible for presenting diagnostics to users. It should expose structured source-related errors, leaving diagnostic formatting and presentation to the compiler's diagnostic infrastructure.
+
+Although source change detection and invalidation are part of its responsibilities, the Source Manager is not responsible for determining which compilation stages must be rerun. That responsibility belongs to the compilation orchestration and dependency management systems.
+
+The Source Manager should remain independent of the language's grammar and semantics, allowing it to serve as a general-purpose source management component.
+
+
+## Implementation
+
+This section describes the proposed public API and organization of the Source Management subsystem.
+
+The following directory structure is suggested:
+
+```text
+Z/
+└── Zirsakht/
+    └── Source/
+        ├── SourceManager.hpp
+        ├── Source.hpp
+        ├── SourceId.hpp
+        ├── SourceMetadata.hpp
+        ├── SourceStorage.hpp
+        ├── SourceLoader.hpp
+        ├── SourceProvider.hpp
+        ├── SourceChangeTracker.hpp
+        └── SourceError.hpp
+```
+
+### Suggested Namespace
+
+All source management components should reside under:
+
+```cpp
+namespace Z::Zirsakht::Source {
+    // ...
+}
+```
+
+### SourceError
+
+Represents structured errors associated with source management operations.
+
+```cpp
+enum class SourceErrorCode {
+    NotFound,
+    PermissionDenied,
+    InvalidSource,
+    UnsupportedOrigin,
+    LoadingFailed,
+    StorageFailed,
+    MetadataUnavailable,
+    SourceChanged,
+    InvalidSourceId,
+    ProviderUnavailable
+};
+
+struct SourceError {
+    SourceErrorCode code;
+    std::string message;
+    std::optional<std::error_code> system_error;
+};
+```
+
+### SourceId
+
+Represents the unique identity of a source within its management context.
+
+```cpp
+class SourceId {
+public:
+    using ValueType = std::uint32_t;
+
+    static constexpr ValueType invalid_value = 0;
+
+    constexpr SourceId() noexcept = default;
+    explicit constexpr SourceId(ValueType value) noexcept;
+
+    [[nodiscard]]
+    constexpr ValueType value() const noexcept;
+
+    [[nodiscard]]
+    constexpr bool valid() const noexcept;
+
+    constexpr auto operator<=>(
+        const SourceId&
+    ) const noexcept = default;
+};
+```
+
+### SourceMetadata
+
+Represents descriptive information associated with a source.
+
+```cpp
+enum class SourceOrigin {
+    FileSystem,
+    Memory,
+    Generated,
+    StandardInput,
+    External
+};
+
+struct SourceMetadata {
+    std::string name;
+    std::optional<std::filesystem::path> path;
+    SourceOrigin origin;
+    std::uint64_t size;
+    std::optional<std::filesystem::file_time_type> last_modified;
+};
+```
+
+### Source
+
+Represents an individual source registered with the Source Manager.
+
+```cpp
+class Source {
+public:
+    [[nodiscard]]
+    SourceId id() const noexcept;
+
+    [[nodiscard]]
+    const SourceMetadata& metadata() const noexcept;
+
+    [[nodiscard]]
+    bool valid() const noexcept;
+};
+```
+
+### SourceProvider
+
+Abstracts the origin of source contents and provides a common acquisition interface.
+
+```cpp
+struct SourceRequest {
+    std::string_view name;
+    std::optional<std::filesystem::path> path;
+};
+
+class SourceInput;
+
+class SourceProvider {
+public:
+    virtual ~SourceProvider() = default;
+
+    [[nodiscard]]
+    virtual SourceOrigin origin() const noexcept = 0;
+
+    [[nodiscard]]
+    virtual bool supports(
+        const SourceRequest& request
+    ) const noexcept = 0;
+
+    [[nodiscard]]
+    virtual std::expected<
+        std::unique_ptr<SourceInput>,
+        SourceError
+    > open(
+        const SourceRequest& request
+    ) = 0;
+};
+```
+
+### SourceStorage
+
+Manages the availability, retention, and release of acquired source contents.
+
+```cpp
+class SourceBuffer;
+
+class SourceStorage {
+public:
+    virtual ~SourceStorage() = default;
+
+    [[nodiscard]]
+    virtual std::expected<void, SourceError> store(
+        SourceId id,
+        std::shared_ptr<const SourceBuffer> buffer
+    ) = 0;
+
+    [[nodiscard]]
+    virtual std::expected<
+        std::shared_ptr<const SourceBuffer>,
+        SourceError
+    > get(SourceId id) const = 0;
+
+    [[nodiscard]]
+    virtual bool contains(SourceId id) const noexcept = 0;
+
+    [[nodiscard]]
+    virtual std::expected<void, SourceError> release(
+        SourceId id
+    ) = 0;
+};
+```
+
+### SourceLoader
+
+Coordinates source acquisition and loading policies.
+
+```cpp
+enum class SourceLoadingStrategy {
+    Automatic,
+    Eager,
+    Lazy,
+    MemoryMapped
+};
+
+struct SourceLoadOptions {
+    SourceLoadingStrategy strategy;
+};
+
+class SourceLoader {
+public:
+    virtual ~SourceLoader() = default;
+
+    [[nodiscard]]
+    virtual std::expected<
+        std::shared_ptr<const SourceBuffer>,
+        SourceError
+    > load(
+        SourceProvider& provider,
+        const SourceRequest& request,
+        const SourceLoadOptions& options
+    ) = 0;
+};
+```
+
+### SourceChangeTracker
+
+Tracks source modifications, validity, and invalidation.
+
+```cpp
+enum class SourceChangeType {
+    Modified,
+    Removed,
+    Invalidated
+};
+
+struct SourceChange {
+    SourceId source;
+    SourceChangeType type;
+};
+
+class SourceChangeTracker {
+public:
+    virtual ~SourceChangeTracker() = default;
+
+    [[nodiscard]]
+    virtual std::expected<bool, SourceError> has_changed(
+        SourceId source
+    ) = 0;
+
+    [[nodiscard]]
+    virtual std::expected<void, SourceError> invalidate(
+        SourceId source
+    ) = 0;
+
+    [[nodiscard]]
+    virtual std::vector<SourceChange> collect_changes() = 0;
+};
+```
+
+### SourceManager
+
+The central interface and coordinating component of the Source Management subsystem.
+
+```cpp
+class SourceManager {
+public:
+    SourceManager(
+        std::unique_ptr<SourceStorage> storage,
+        std::unique_ptr<SourceLoader> loader,
+        std::unique_ptr<SourceChangeTracker> tracker
+    );
+
+    // Provider registration
+    void register_provider(
+        std::unique_ptr<SourceProvider> provider
+    );
+
+    // Source acquisition
+    [[nodiscard]]
+    std::expected<SourceId, SourceError> acquire(
+        const SourceRequest& request,
+        const SourceLoadOptions& options
+    );
+
+    // Source lookup
+    [[nodiscard]]
+    std::optional<Source> find(SourceId id) const;
+
+    // Source contents
+    [[nodiscard]]
+    std::expected<
+        std::shared_ptr<const SourceBuffer>,
+        SourceError
+    > get_contents(SourceId id) const;
+
+    // Source metadata
+    [[nodiscard]]
+    std::optional<SourceMetadata> get_metadata(
+        SourceId id
+    ) const;
+
+    // Source lifecycle
+    [[nodiscard]]
+    std::expected<void, SourceError> release(
+        SourceId id
+    );
+
+    // Source validity
+    [[nodiscard]]
+    std::expected<bool, SourceError> has_changed(
+        SourceId id
+    );
+
+    [[nodiscard]]
+    std::expected<void, SourceError> invalidate(
+        SourceId id
+    );
+
+    [[nodiscard]]
+    std::vector<SourceChange> collect_changes();
+};
+```
+
+## Implementation Tracking
+
+This section tracks the implementation progress of the Source Management subsystem. It provides an overview of completed, ongoing, and pending work across its components.
+
+Implementation progress should follow the responsibilities and public API contracts defined in this document. Changes to the proposed API or component responsibilities should be reflected in the design before or alongside their implementation.
+
+### Component Status
+
+| Component | Status | Notes |
+|---|---|---|
+| `SourceError` | Not Started | Structured source-related errors. |
+| `SourceId` | Not Started | Source identification. |
+| `SourceMetadata` | Not Started | Source metadata representation. |
+| `Source` | Not Started | Source representation. |
+| `SourceProvider` | Not Started | Source origin abstraction. |
+| `SourceStorage` | Not Started | Source content storage and retention. |
+| `SourceLoader` | Not Started | Source acquisition and loading policies. |
+| `SourceChangeTracker` | Not Started | Source change detection and invalidation. |
+| `SourceManager` | Not Started | Central source management interface. |
+
+### Implementation Milestones
+
+#### Phase 1: Core Types
+- [ ] Implement `SourceError`.
+- [ ] Implement `SourceId`.
+- [ ] Implement `SourceMetadata`.
+- [ ] Implement `Source`.
+- [ ] Add unit tests for core types.
+
+#### Phase 2: Source Acquisition
+- [ ] Define `SourceInput`.
+- [ ] Define `SourceBuffer`.
+- [ ] Implement `SourceProvider`.
+- [ ] Implement filesystem source provider.
+- [ ] Implement `SourceLoader`.
+- [ ] Add source acquisition and loading tests.
+
+#### Phase 3: Source Storage
+- [ ] Implement `SourceStorage`.
+- [ ] Support memory-backed source contents.
+- [ ] Support memory-mapped source contents.
+- [ ] Implement source resource retention and release.
+- [ ] Add storage and resource lifecycle tests.
+
+#### Phase 4: Source Management
+- [ ] Implement `SourceManager`.
+- [ ] Integrate source providers, loader, and storage.
+- [ ] Implement source registration and lookup.
+- [ ] Implement source metadata access.
+- [ ] Integrate with `CompilationSession`.
+- [ ] Add SourceManager integration tests.
+
+#### Phase 5: Source Validity
+- [ ] Implement `SourceChangeTracker`.
+- [ ] Support source modification detection.
+- [ ] Support source invalidation.
+- [ ] Integrate source validity with SourceManager.
+- [ ] Add source change detection tests.
+
+#### Phase 6: Integration and Documentation
+- [ ] Integrate SourceManager with compiler components.
+- [ ] Integrate source-related errors with diagnostic infrastructure.
+- [ ] Verify source lifecycle and resource ownership.
+- [ ] Document public API contracts.
+- [ ] Add end-to-end source management tests.
+
+### Completion Criteria
+
+The Source Management subsystem can be considered initially complete when:
+
+- All core source management components are implemented.
+- Source acquisition works through the provider abstraction.
+- Source contents can be accessed through a consistent interface.
+- Source storage and resource lifecycle are managed correctly.
+- Source identities remain consistent throughout a compilation session.
+- Source-related failures are reported through structured errors.
+- Source changes can be detected and invalidated.
+- The subsystem is integrated with `CompilationSession`.
+- Unit and integration tests cover the public API and its expected behavior.

@@ -15,6 +15,8 @@ const config: Config = {
   baseUrl: '/design/',
   organizationName: 'zii-lang',
   projectName: 'design',
+  deploymentBranch: 'gh-pages',
+  trailingSlash: false,
   onBrokenLinks: 'throw',
   i18n: {
     defaultLocale: 'en',
